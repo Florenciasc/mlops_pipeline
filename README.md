@@ -1,61 +1,224 @@
-# Proyecto Integrador - Modelo Predictivo de Crédito
+# Pipeline MLOps – Predicción de Riesgo Crediticio (FinTech)
 
-## Objetivo
-Desarrollar un modelo supervisado para predecir si un cliente realizará su pago a tiempo.
+## Descripción General
 
-## Dataset
-Base histórica de créditos con variable objetivo `Pago_atiempo`.
+Este proyecto desarrolla un pipeline completo de Machine Learning bajo principios de **MLOps**, orientado a la predicción del comportamiento de pago de clientes en un entorno FinTech.
 
-## Avance 1
-- Estructura de proyecto definida
-- Carga y limpieza inicial de datos
-- Análisis Exploratorio completo (univariable, bivariable, multivariable)
+El objetivo es anticipar si un cliente pagará su crédito en tiempo y forma, permitiendo mejorar la gestión de riesgo crediticio y la toma de decisiones basada en datos.
 
-## Observaciones
-Se detectó desbalance en la variable objetivo, el cual será tratado en etapas posteriores.
+Variable objetivo:
 
-## Resultados del EDA
+- `pago_atiempo`
+  - 1 → Pago en tiempo y forma
+  - 0 → Incumplimiento / Mora
 
-- Se detectó desbalance en la variable objetivo (~95/5).
-- Se identificaron variables altamente correlacionadas con el target.
-- Se observaron distribuciones asimétricas en variables monetarias.
-- Se definieron reglas preliminares de validación de datos.
+El desarrollo contempla:
 
-## Avance 2
-Ingeniería de características
+- Análisis exploratorio profundo
+- Ingeniería de características
+- Evaluación comparativa de modelos
+- Despliegue como API
+- Monitoreo estadístico (Data Drift)
+- Containerización con Docker
 
-Se normalizaron nombres de columnas y se unificaron valores nulos.
+---
 
-Se extrajeron variables temporales (anio_prestamo, mes_prestamo) a partir de la fecha.
+# 🏗 Arquitectura del Sistema
+Datos históricos
+↓
+EDA
+↓
+Feature Engineering
+↓
+Entrenamiento y validación
+↓
+Selección del modelo
+↓
+API (FastAPI)
+↓
+Monitoreo (Drift)
+↓
+Visualización (Streamlit)
 
-Se trató tipo_credito como variable categórica codificada.
 
-Se construyó un pipeline reproducible con imputación, escalado y OneHotEncoding.
+---
 
-Modelamiento
+# Análisis Exploratorio de Datos (EDA)
 
-Se entrenaron Logistic Regression, Random Forest y XGBoost.
+Se realizó:
 
-Se priorizaron métricas robustas para desbalance (PR-AUC, Recall, F1).
+- Revisión de estructura y tipos de datos
+- Unificación y tratamiento de valores nulos
+- Análisis univariable (distribuciones, medidas estadísticas)
+- Análisis bivariable respecto al target
+- Matriz de correlación y análisis multivariable
 
-Se evaluaron dos escenarios: con y sin la variable puntaje.
+### Hallazgo relevante
 
-Hallazgos clave
+Se identificó que la variable `puntaje` presentaba una correlación muy alta (~0.92) con la variable objetivo.
 
-La variable puntaje mostró correlación muy alta con el target (0.92).
+Esto sugiere posible **fuga de información (data leakage)**, por lo que fue excluida del modelo productivo para evitar sobreestimación artificial del desempeño.
 
-El modelo XGBoost con puntaje obtuvo performance perfecta (1.0 en todas las métricas).
+---
 
-Este resultado sugiere posible fuga de información.
+# Ingeniería de Características
 
-Modelo seleccionado
+Se implementó un pipeline utilizando `ColumnTransformer` que incluye:
 
-Se selecciona RandomForest sin la variable puntaje por:
+- Imputación de variables numéricas
+- Codificación de variables categóricas
+- Separación consistente de train/test
+- Transformaciones reproducibles entre entrenamiento e inferencia
 
-Alto recall (1.0)
+El diseño garantiza consistencia entre el flujo de entrenamiento y el flujo de predicción en producción.
 
-F1 elevado
+---
 
-Ausencia de indicios de sobreajuste extremo
+# Modelamiento y Evaluación
 
-Mayor robustez y potencial de generalización
+Se evaluaron los siguientes modelos:
+
+- Regresión Logística (balanceada)
+- Random Forest
+- XGBoost
+
+Métricas utilizadas:
+
+- Precision
+- Recall
+- F1 Score
+- ROC-AUC
+- PR-AUC
+
+En el contexto de riesgo crediticio, se priorizó:
+
+- Capacidad de detección (Recall)
+- Equilibrio general (F1 Score)
+- Estabilidad del modelo
+
+## Modelo Seleccionado
+
+**RandomForest sin la variable `puntaje`**
+
+Justificación:
+
+- Buen equilibrio entre precision y recall
+- Desempeño estable
+- Sin evidencia de fuga de información
+- Mayor robustez ante ruido y outliers
+
+---
+
+# Despliegue del Modelo (FastAPI)
+
+El modelo se expone como servicio REST utilizando FastAPI.
+
+### Ejecutar localmente
+
+uvicorn src.model_deploy:app --reload
+
+Endpoints disponibles:
+
+/health
+
+/predict
+
+/docs
+
+Soporta predicción por lote (batch scoring) y retorna probabilidades junto con clasificación binaria.
+
+Monitoreo y Detección de Data Drift
+
+Se implementó un módulo de monitoreo para detectar cambios en la distribución de los datos que puedan afectar el desempeño del modelo.
+
+## Métricas aplicadas:
+
+Variables numéricas:
+
+Kolmogorov-Smirnov (KS)
+
+Population Stability Index (PSI)
+
+Jensen-Shannon Divergence
+
+Variables categóricas:
+
+Test Chi-cuadrado
+
+Ejecución: 
+python src/model_monitoring.py
+
+Genera reportes de drift y permite seguimiento histórico.
+
+## Visualización (Streamlit)
+
+Se desarrolló una aplicación interactiva que permite:
+
+Visualizar métricas de drift
+
+Analizar variables con desviaciones significativas
+
+Comparar distribuciones históricas vs actuales
+
+Identificar tendencias en el tiempo
+
+Ejecución:
+Visualización (Streamlit)
+
+Se desarrolló una aplicación interactiva que permite:
+
+Visualizar métricas de drift
+
+Analizar variables con desviaciones significativas
+
+Comparar distribuciones históricas vs actuales
+
+Identificar tendencias en el tiempo
+
+Ejecución:
+streamlit run src/app.py
+
+## Containerización
+
+El proyecto incluye Docker para asegurar portabilidad y consistencia entre entornos.
+
+Construcción:
+docker build -t mlops-api .
+
+Ejecución:
+docker run -p 8000:8000 mlops-api
+
+## Buenas Prácticas Implementadas
+
+Separación de responsabilidades (train vs deploy)
+
+Detección de data leakage
+
+Transformaciones reproducibles
+
+Monitoreo estadístico continuo
+
+Preparación para integración CI/CD
+
+Containerización para entornos productivos
+
+## Stack Tecnológico
+
+Python 3.11
+
+Pandas / NumPy
+
+Scikit-learn
+
+XGBoost
+
+FastAPI
+
+Streamlit
+
+Docker
+
+**Autora**
+
+Florencia Sosa Comisso
+Proyecto Integrador – Pipeline MLOps aplicado a Riesgo Crediticio
