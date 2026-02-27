@@ -1,4 +1,3 @@
-# mlops_pipeline/src/model_training_evaluation.py
 from __future__ import annotations
 
 import pandas as pd
@@ -130,3 +129,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+    
+    
+    
+    
+    ### Análisis comparativo de modelos
+
+#En el escenario sin la variable puntaje, los modelos presentan desempeño consistente con métricas realistas. RandomForest y XGBoost muestran recall cercano a 1.0 y F1 elevado, con ROC-AUC aproximado de 0.67.
+
+#En el escenario con la variable puntaje, todos los modelos alcanzan métricas perfectas (1.0), lo cual sugiere posible fuga de información o una variable con capacidad predictiva casi determinística respecto al target.
+
+#Dado que en el EDA se identificó una correlación de 0.92 entre puntaje y la variable objetivo, se considera que su inclusión puede comprometer la capacidad de generalización del modelo.
+
+#Por este motivo, se selecciona como modelo final el RandomForest entrenado sin la variable puntaje, por presentar alto recall, F1 robusto y desempeño realista sin evidencia de sobreajuste extremo.

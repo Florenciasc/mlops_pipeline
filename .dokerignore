@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.git/
+model_pipeline.joblib
+baseline_reference.csv
+drift_report.csv
+drift_history.csv
