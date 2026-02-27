@@ -23,7 +23,7 @@ El desarrollo contempla:
 
 ---
 
-# 🏗 Arquitectura del Sistema
+# Arquitectura del Sistema
 Datos históricos
 ↓
 EDA
