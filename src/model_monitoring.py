@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.stats import ks_2samp, chisquare
 from scipy.spatial.distance import jensenshannon
 
-from ft_engineering import load_dataset
+from src.ft_engineering import load_dataset
 from model_deploy import fe_from_raw  # Reutilizamos el mismo FE del deploy
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))

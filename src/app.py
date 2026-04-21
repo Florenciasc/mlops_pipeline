@@ -14,7 +14,7 @@ BASELINE_PATH = os.path.join(PROJECT_ROOT, "baseline_reference.csv")
 
 # Reutilizamos monitoring para reconstruir current batch para gráficos
 sys.path.append("src")
-from ft_engineering import load_dataset
+from src.ft_engineering import load_dataset
 from model_deploy import fe_from_raw
 from model_monitoring import current_batch
 

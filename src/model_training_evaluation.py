@@ -17,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 
-from ft_engineering import prepare_training_data
+from src.ft_engineering import prepare_training_data
 
 
 def summarize_classification(y_true, y_pred, y_proba) -> dict:
