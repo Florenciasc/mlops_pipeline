@@ -69,11 +69,7 @@ def fe_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 def load_pipeline():
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Modelo no encontrado en: {MODEL_PATH}. "
-            "Asegurate de incluir models/model_pipeline.joblib en el repo."
-        )
-
+        raise FileNotFoundError(f"Modelo no encontrado en: {MODEL_PATH}")
     return joblib.load(MODEL_PATH)
 
 
