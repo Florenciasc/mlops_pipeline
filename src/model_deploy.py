@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
-
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="MLOps API - Pago a Tiempo",
-    version="1.0.0"
+    version="1.0.0",
+    description="API para predecir la probabilidad de pago a tiempo de clientes a partir de variables financieras, demográficas y crediticias."
 )
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +26,32 @@ PIPELINE = None
 class PredictRequest(BaseModel):
     records: List[Dict[str, Any]] = Field(
         ...,
-        description="Lista de registros en JSON para predicción batch."
+        description="Lista de registros en JSON para predicción batch.",
+        example=[
+            {
+                "edad_cliente": 35,
+                "salario_cliente": 80000,
+                "tipo_credito": "consumo",
+                "capital_prestado": 15000,
+                "plazo_meses": 12,
+                "tipo_laboral": "dependiente",
+                "total_otros_prestamos": 2,
+                "cuota_pactada": 1800,
+                "puntaje_datacredito": 720,
+                "cant_creditosvigentes": 1,
+                "huella_consulta": 0,
+                "saldo_mora": 0,
+                "saldo_principal": 12000,
+                "saldo_total": 15000,
+                "saldo_mora_codeudor": 0,
+                "creditos_sectorfinanciero": 1,
+                "creditos_sectorcooperativo": 0,
+                "creditos_sectorreal": 0,
+                "promedio_ingresos_datacredito": 78000,
+                "tendencia_ingresos": "estable",
+                "fecha_prestamo": "2024-03-15"
+            }
+        ]
     )
 
 
@@ -43,6 +68,13 @@ def _standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def fe_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aplica la misma lógica básica de feature engineering usada antes del pipeline:
+    - normaliza nombres
+    - trata nulos frecuentes
+    - transforma fecha_prestamo en anio_prestamo y mes_prestamo
+    - elimina columnas que no deben entrar al modelo
+    """
     df = df_raw.copy()
     df = _standardize_columns(df)
 
@@ -58,9 +90,11 @@ def fe_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].astype(str)
 
+    # Evitar leakage
     if "puntaje" in df.columns:
         df.drop(columns=["puntaje"], inplace=True)
 
+    # Por si el usuario envía el target
     if TARGET in df.columns:
         df.drop(columns=[TARGET], inplace=True)
 
@@ -107,18 +141,25 @@ def predict(req: PredictRequest):
     if df_raw.empty:
         return {"error": "No se recibieron registros."}
 
-    df = fe_from_raw(df_raw)
+    try:
+        df = fe_from_raw(df_raw)
 
-    proba = PIPELINE.predict_proba(df)[:, 1]
-    pred = (proba >= 0.5).astype(int)
+        proba = PIPELINE.predict_proba(df)[:, 1]
+        pred = (proba >= 0.5).astype(int)
 
-    return {
-        "n_records": int(len(df_raw)),
-        "predictions": [
-            {
-                "proba_pago_atiempo": float(p),
-                "pred_pago_atiempo": int(y)
-            }
-            for p, y in zip(proba, pred)
-        ]
-    }
+        return {
+            "n_records": int(len(df_raw)),
+            "predictions": [
+                {
+                    "proba_pago_atiempo": float(p),
+                    "pred_pago_atiempo": int(y)
+                }
+                for p, y in zip(proba, pred)
+            ]
+        }
+
+    except Exception as e:
+        return {
+            "error": "Falló la predicción",
+            "detail": str(e)
+        }
