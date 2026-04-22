@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 import os
 from dataclasses import dataclass
@@ -49,11 +50,8 @@ def load_dataset(data_path: Optional[str] = None) -> pd.DataFrame:
     """
 
     if data_path is None:
-        cwd = os.getcwd()
-        if cwd.endswith("src"):
-            data_path = os.path.join("..", "Base_de_datos.xlsx")
-        else:
-            data_path = "Base_de_datos.xlsx"
+        base_dir = Path(__file__).resolve().parents[1]
+        data_path = base_dir / "data" / "raw" / "Base_de_datos.xlsx"
 
     df = pd.read_excel(data_path)
 

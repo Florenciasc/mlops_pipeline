@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
@@ -51,14 +51,16 @@ def train_eval_one(name: str, model, preprocessor, X_train, y_train, X_test, y_t
     return metrics
 
 
-def plot_comparison(df_metrics: pd.DataFrame, title: str) -> None:
-    df_plot = df_metrics.set_index("model")[["roc_auc", "pr_auc", "f1_pos", "recall_pos"]]
-    ax = df_plot.plot(kind="bar", figsize=(10, 5))
-    ax.set_title(title)
-    ax.set_ylabel("Score")
-    plt.xticks(rotation=25, ha="right")
-    plt.tight_layout()
-    plt.show()
+def plot_comparison(df_metrics, title):
+    pass
+# (def plot_comparison(df_metrics: pd.DataFrame, title: str) -> None:
+   #df_plot = df_metrics.set_index("model")[["roc_auc", "pr_auc", "f1_pos", "recall_pos"]]
+    #ax = df_plot.plot(kind="bar", figsize=(10, 5))
+    #ax.set_title(title)
+    #ax.set_ylabel("Score")
+    #plt.xticks(rotation=25, ha="right")
+    #plt.tight_layout()
+    #plt.show()
 
 
 def run_scenario(scenario_name: str, drop_cols=None) -> pd.DataFrame:
@@ -109,23 +111,84 @@ def run_scenario(scenario_name: str, drop_cols=None) -> pd.DataFrame:
     print(f"\n=== Resultados: {scenario_name} ===")
     print(df_metrics)
 
-    plot_comparison(df_metrics, title=f"Comparación de modelos ({scenario_name})")
+    # plot_comparison(df_metrics, title=f"Comparación de modelos ({scenario_name})")
     return df_metrics
 
 
 def main():
-    # Escenario 1: con todas las variables
-    res_all = run_scenario("con_puntaje", drop_cols=None)
+    import os
+    import joblib
+    from sklearn.ensemble import RandomForestClassifier
 
-    # Escenario 2: sin 'puntaje' por posible leakage (correlación muy alta observada en EDA)
-    res_no_score = run_scenario("sin_puntaje", drop_cols=["puntaje"])
+    TARGET = "pago_atiempo"
 
-    final = pd.concat([res_all, res_no_score], ignore_index=True)
+    # -------------------------
+    # Escenario 1: con puntaje
+    # -------------------------
+    res_all = run_scenario(
+        scenario_name="con_puntaje",
+        drop_cols=None
+    )
 
-    best = final.sort_values(by=["pr_auc", "recall_pos", "f1_pos"], ascending=False).head(1)
-    print("\n✅ Mejor configuración (según PR-AUC + Recall/F1):")
+    # -------------------------
+    # Escenario 2: sin puntaje
+    # (evitando leakage)
+    # -------------------------
+    res_no_score = run_scenario(
+        scenario_name="sin_puntaje",
+        drop_cols=["puntaje"]
+    )
+
+    final = pd.concat(
+        [res_all, res_no_score],
+        ignore_index=True
+    )
+
+    best = final.sort_values(
+        by=["pr_auc", "recall_pos", "f1_pos"],
+        ascending=False
+    ).head(1)
+
+    print("\n✅ Mejor configuración:")
     print(best)
 
+
+    # ======================================
+    # REENTRENAR Y GUARDAR MODELO FINAL
+    # ======================================
+
+    print("\nEntrenando pipeline final para deploy...")
+
+    split, preprocessor, _ = prepare_training_data(
+        target=TARGET,
+        drop_cols=["puntaje"]  # elegimos escenario sin leakage
+    )
+
+    final_model = RandomForestClassifier(
+        n_estimators=300,
+        random_state=42,
+        class_weight="balanced_subsample",
+        n_jobs=-1
+    )
+
+    final_pipeline = build_model(
+        final_model,
+        preprocessor
+    )
+
+    final_pipeline.fit(
+        split.X_train,
+        split.y_train
+    )
+
+    os.makedirs("models", exist_ok=True)
+
+    joblib.dump(
+        final_pipeline,
+        "models/model_pipeline.joblib"
+    )
+
+    print("✅ Modelo guardado en models/model_pipeline.joblib")
 
 if __name__ == "__main__":
     main()
