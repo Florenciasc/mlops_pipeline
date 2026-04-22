@@ -9,9 +9,12 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+THRESHOLD = 0.50
+MODEL_VERSION = "1.0.0"
+
 app = FastAPI(
     title="MLOps API - Pago a Tiempo",
-    version="1.0.0",
+    version=MODEL_VERSION,
     description="API para predecir la probabilidad de pago a tiempo de clientes a partir de variables financieras, demográficas y crediticias."
 )
 
@@ -118,7 +121,8 @@ def home():
     return {
         "status": "ok",
         "message": "API running",
-        "docs": "/docs"
+        "docs": "/docs",
+        "model_version": MODEL_VERSION
     }
 
 
@@ -128,6 +132,7 @@ def health():
         "status": "ok",
         "model_loaded": PIPELINE is not None,
         "model_file": os.path.basename(MODEL_PATH),
+        "model_version": MODEL_VERSION
     }
 
 
@@ -145,10 +150,12 @@ def predict(req: PredictRequest):
         df = fe_from_raw(df_raw)
 
         proba = PIPELINE.predict_proba(df)[:, 1]
-        pred = (proba >= 0.5).astype(int)
+        pred = (proba >= THRESHOLD).astype(int)
 
         return {
             "n_records": int(len(df_raw)),
+            "threshold": THRESHOLD,
+            "model_version": MODEL_VERSION,
             "predictions": [
                 {
                     "proba_pago_atiempo": float(p),
