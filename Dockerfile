@@ -13,3 +13,5 @@ COPY . .
 
 EXPOSE 8000
 EXPOSE 8501
+
+CMD uvicorn src.model_deploy:app --host 0.0.0.0 --port ${PORT:-8000}
