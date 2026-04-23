@@ -1,198 +1,229 @@
-# Pipeline MLOps para Riesgo Crediticio
+# End-to-End MLOps Pipeline for Credit Risk Monitoring
 
-Proyecto end-to-end de Machine Learning y MLOps para predecir probabilidad de pago a tiempo, incluyendo entrenamiento, API, monitoreo de drift y dashboard de observabilidad.
+Production-style MLOps pipeline for credit risk prediction, model serving, drift detection and observability.
 
----
+## Overview
 
-## Descripción del proyecto
+This project simulates an end-to-end machine learning system in a production environment, covering the full lifecycle from model training to deployment and monitoring.
 
-Este proyecto busca simular un flujo productivo de MLOps aplicado a riesgo crediticio.
+It includes:
 
-Incluye:
+- Predictive model for credit behavior
+- FastAPI model serving API
+- Dockerized deployment
+- Data drift monitoring framework
+- Interactive Streamlit observability dashboard
+- Deployment in Render (API + Monitoring Console)
 
-- Ingeniería de variables
-- Benchmarking de modelos
-- Detección de leakage
-- Pipeline final serializado para producción
-- API de inferencia con FastAPI
-- Monitoreo de data drift
-- Dashboard interactivo de observabilidad
-- Ejecución dockerizada
+The project was designed following MLOps principles: reproducibility, monitoring, model governance and operational visibility.
 
 ---
 
-## Problema de negocio
+## Architecture
 
-El objetivo es estimar si un cliente tiene probabilidad de **pagar a tiempo** usando variables financieras, demográficas y crediticias.
-
-Además del modelado, el foco está en llevar una solución desde experimentación hacia una arquitectura más cercana a producción:
-
-- seleccionar un modelo robusto
-- evitar leakage
-- exponer predicciones por API
-- monitorear drift en el tiempo
-
----
-
-## Componentes principales
-
-### Modelado
-Se compararon:
-
-- Logistic Regression
-- Random Forest
-- XGBoost
-
-Se evaluaron dos escenarios:
-
-### Escenario con `puntaje`
-Obtuvo métricas casi perfectas y permitió detectar leakage.
-
-### Escenario sin `puntaje`
-Produjo desempeño más realista y fue elegido para deploy.
-
----
-
-## MLOps y Serving
-
-El pipeline final se serializa como:
-
-```bash
-models/model_pipeline.joblib
+```text
+Data → Feature Engineering → Model Training → API Inference
+                                     ↓
+                           Drift Monitoring Layer
+                                     ↓
+                           Monitoring Dashboard
 ```
 
-Se expone mediante FastAPI con endpoints:
+### Components
 
-- `/`
-- `/health`
-- `/predict`
-- `/docs`
+### 1. Model Training
+- Feature engineering pipeline
+- Classification model for `Pago_atiempo`
+- Serialized production pipeline with Joblib
 
-Ejecutar:
+Algorithms explored:
+- Logistic Regression
+- Gradient Boosting approaches
+- Risk-oriented evaluation metrics
+
+---
+
+## 2. Prediction API (FastAPI)
+
+Deployed API:
+
+https://mlops-pipeline-api.onrender.com
+
+Endpoints:
+
+### Health Check
+```http
+GET /
+```
+
+### Batch Predictions
+```http
+POST /predict
+```
+
+Returns:
+
+- predicted class
+- probability score
+- model version
+- threshold metadata
+
+Example response:
+
+```json
+{
+ "predictions":[
+   {
+    "proba_pago_atiempo":0.983,
+    "pred_pago_atiempo":1
+   }
+ ]
+}
+```
+
+Swagger Docs:
+
+```http
+https://mlops-pipeline-api.onrender.com/docs
+```
+
+---
+
+## 3. Drift Monitoring Console
+
+Live dashboard:
+
+https://mlops-pipeline-dashboard.onrender.com
+
+Monitoring includes:
+
+Numerical drift:
+- PSI
+- Kolmogorov-Smirnov
+- Jensen-Shannon Distance
+
+Categorical drift:
+- Chi-Square Drift Detection
+
+Dashboard modules:
+
+- Executive Risk Overview
+- Drift Incident Panel
+- Feature Diagnostics
+- Historical Drift Monitoring
+- Risk Scoring Matrix
+- Downloadable Monitoring Reports
+
+---
+
+## Monitoring Example
+
+Detected incident:
+
+- Feature: `tendencia_ingresos`
+- Status: DRIFT
+- Automatic recommendation:
+  Review upstream category mapping
+
+Simulates production monitoring workflows.
+
+---
+
+## Tech Stack
+
+Python  
+Pandas  
+Scikit-learn  
+FastAPI  
+Streamlit  
+Docker  
+Render  
+Joblib  
+Plotly
+
+---
+
+## Project Structure
+
+```bash
+mlops_pipeline/
+│
+├── data/
+├── models/
+├── notebooks/
+├── reports/
+├── src/
+│   ├── app.py
+│   ├── model_deploy.py
+│   ├── model_monitoring.py
+│   └── ft_engineering.py
+│
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
+```
+
+---
+
+## Local Run
+
+Clone repository:
+
+```bash
+git clone https://github.com/Florenciasc/mlops_pipeline.git
+cd mlops_pipeline
+```
+
+Install:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run API:
 
 ```bash
 uvicorn src.model_deploy:app --reload
 ```
 
----
-
-## Monitoreo de Drift
-
-Se implementa monitoreo usando:
-
-- PSI
-- Jensen-Shannon
-- KS test
-- Chi-cuadrado
-
-Archivos generados:
-
-- baseline_reference.csv
-- drift_report.csv
-- drift_history.csv
-
-Ejecutar:
-
-```bash
-python -m src.model_monitoring
-```
-
----
-
-## Dashboard de Observabilidad
-
-Aplicación en Streamlit para monitoreo interactivo:
+Run monitoring dashboard:
 
 ```bash
 streamlit run src/app.py
 ```
 
-Incluye:
+---
 
-- Primary incident detection
-- Global drift risk gauge
-- Drift analysis table
-- Top drifted features
-- Recommended actions
-- Feature diagnostics
-- Historical monitoring
-- Feature importance vs drift matrix
+## Key MLOps Capabilities Demonstrated
+
+✔ Model deployment  
+✔ Batch inference API  
+✔ Data drift detection  
+✔ Model observability  
+✔ Incident-style monitoring  
+✔ Dockerized deployment  
+✔ Cloud deployment  
+✔ Monitoring dashboard
 
 ---
 
-## Stack Tecnológico
+## Future Improvements
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- XGBoost
-- FastAPI
-- Streamlit
-- Plotly
-- Docker
-- Render
-
----
-
-## Estructura
-
-```bash
-mlops_pipeline/
-│
-├── models/
-│   └── model_pipeline.joblib
-│
-├── src/
-│   ├── ft_engineering.py
-│   ├── model_training_evaluation.py
-│   ├── model_deploy.py
-│   ├── model_monitoring.py
-│   └── app.py
-│
-├── baseline_reference.csv
-├── drift_report.csv
-├── drift_history.csv
-├── feature_importance.csv
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
-```
-
----
-
-## Docker
-
-Levantar todo:
-
-```bash
-docker compose up --build
-```
-
-Servicios:
-
-- API → localhost:8000
-- Swagger → localhost:8000/docs
-- Dashboard → localhost:8501
-
----
-
-## Próximos pasos
-
-Posibles mejoras futuras:
-
-- Prediction drift
+- Model performance monitoring (prediction drift)
+- Automated alerting
+- CI/CD pipeline integration
 - Retraining triggers
-- Alertas automáticas
-- Champion vs Challenger monitoring
-- Explainability drift
+- Prometheus/Grafana integration
 
 ---
 
-## Autora
+## Author
 
-**Florencia Sosa Comisso**  
-Data & Business Analyst | BI · SQL · Python · Power BI
+Florencia Sosa Comisso  
+Business & Data Analyst | MLOps | BI
 
-LinkedIn:  
-http://linkedin.com/in/florencia-sosa-comisso
+LinkedIn:
+https://linkedin.com/in/florencia-sosa-comisso
+
+Portfolio:
+https://florenciasc.github.io/
