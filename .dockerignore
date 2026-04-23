@@ -1,9 +1,31 @@
+# virtual env
+.venv/
 venv/
+
+# python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# jupyter
 .ipynb_checkpoints/
+*.ipynb
+
+# git
 .git/
-model_pipeline.joblib
-baseline_reference.csv
-drift_report.csv
-drift_history.csv
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+
+# optional heavy folders
+notebooks/
+
+# logs
+*.log

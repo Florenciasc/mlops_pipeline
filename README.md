@@ -1,172 +1,198 @@
-# 🚀 MLOps Pipeline - Customer Churn Prediction
+# Pipeline MLOps para Riesgo Crediticio
 
-Proyecto de Machine Learning orientado a la predicción de churn de clientes, desarrollado bajo buenas prácticas de MLOps para garantizar reproducibilidad, organización y despliegue.
-
----
-
-## 🎯 Objetivo
-
-Construir un pipeline completo que permita:
-
-* Analizar datos de clientes
-* Entrenar modelos de clasificación
-* Evaluar su performance
-* Servir predicciones mediante una API
-* Preparar el sistema para despliegue en producción
+Proyecto end-to-end de Machine Learning y MLOps para predecir probabilidad de pago a tiempo, incluyendo entrenamiento, API, monitoreo de drift y dashboard de observabilidad.
 
 ---
 
-## 🧠 Enfoque
+## Descripción del proyecto
 
-Este proyecto va más allá del modelo.
+Este proyecto busca simular un flujo productivo de MLOps aplicado a riesgo crediticio.
 
-👉 Se enfoca en el ciclo completo:
+Incluye:
 
-**Datos → Modelado → API → Docker → Deploy**
+- Ingeniería de variables
+- Benchmarking de modelos
+- Detección de leakage
+- Pipeline final serializado para producción
+- API de inferencia con FastAPI
+- Monitoreo de data drift
+- Dashboard interactivo de observabilidad
+- Ejecución dockerizada
 
 ---
 
-## 📁 Estructura del proyecto
+## Problema de negocio
+
+El objetivo es estimar si un cliente tiene probabilidad de **pagar a tiempo** usando variables financieras, demográficas y crediticias.
+
+Además del modelado, el foco está en llevar una solución desde experimentación hacia una arquitectura más cercana a producción:
+
+- seleccionar un modelo robusto
+- evitar leakage
+- exponer predicciones por API
+- monitorear drift en el tiempo
+
+---
+
+## Componentes principales
+
+### Modelado
+Se compararon:
+
+- Logistic Regression
+- Random Forest
+- XGBoost
+
+Se evaluaron dos escenarios:
+
+### Escenario con `puntaje`
+Obtuvo métricas casi perfectas y permitió detectar leakage.
+
+### Escenario sin `puntaje`
+Produjo desempeño más realista y fue elegido para deploy.
+
+---
+
+## MLOps y Serving
+
+El pipeline final se serializa como:
+
+```bash
+models/model_pipeline.joblib
+```
+
+Se expone mediante FastAPI con endpoints:
+
+- `/`
+- `/health`
+- `/predict`
+- `/docs`
+
+Ejecutar:
+
+```bash
+uvicorn src.model_deploy:app --reload
+```
+
+---
+
+## Monitoreo de Drift
+
+Se implementa monitoreo usando:
+
+- PSI
+- Jensen-Shannon
+- KS test
+- Chi-cuadrado
+
+Archivos generados:
+
+- baseline_reference.csv
+- drift_report.csv
+- drift_history.csv
+
+Ejecutar:
+
+```bash
+python -m src.model_monitoring
+```
+
+---
+
+## Dashboard de Observabilidad
+
+Aplicación en Streamlit para monitoreo interactivo:
+
+```bash
+streamlit run src/app.py
+```
+
+Incluye:
+
+- Primary incident detection
+- Global drift risk gauge
+- Drift analysis table
+- Top drifted features
+- Recommended actions
+- Feature diagnostics
+- Historical monitoring
+- Feature importance vs drift matrix
+
+---
+
+## Stack Tecnológico
+
+- Python
+- Pandas
+- NumPy
+- Scikit-learn
+- XGBoost
+- FastAPI
+- Streamlit
+- Plotly
+- Docker
+- Render
+
+---
+
+## Estructura
 
 ```bash
 mlops_pipeline/
 │
-├── data/
-│   ├── raw/
-│   └── processed/
-│
 ├── models/
 │   └── model_pipeline.joblib
 │
-├── notebooks/
-│   ├── cargar_datos.ipynb
-│   └── comprension_eda.ipynb
-│
-├── reports/
-│
 ├── src/
-│   ├── app.py                  # API (FastAPI)
-│   ├── train.py               # Entrenamiento
-│   ├── ft_engineering.py      # Feature engineering
-│   ├── model_deploy.py        # Lógica de predicción
-│   ├── model_monitoring.py    # Monitoreo
-│   └── model_training_evaluation.py
+│   ├── ft_engineering.py
+│   ├── model_training_evaluation.py
+│   ├── model_deploy.py
+│   ├── model_monitoring.py
+│   └── app.py
 │
-├── tests/
+├── baseline_reference.csv
+├── drift_report.csv
+├── drift_history.csv
+├── feature_importance.csv
 ├── Dockerfile
-├── .dockerignore
-├── requirements.txt
+├── docker-compose.yml
 └── README.md
 ```
 
 ---
 
-## ⚙️ Instalación
+## Docker
+
+Levantar todo:
 
 ```bash
-git clone https://github.com/Florenciasc/mlops_pipeline.git
-cd mlops_pipeline
+docker compose up --build
 ```
 
-Crear entorno virtual:
+Servicios:
 
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-Instalar dependencias:
-
-```bash
-pip install -r requirements.txt
-```
+- API → localhost:8000
+- Swagger → localhost:8000/docs
+- Dashboard → localhost:8501
 
 ---
 
-## 🧪 Entrenamiento del modelo
+## Próximos pasos
 
-```bash
-python src/train.py
-```
+Posibles mejoras futuras:
 
-El modelo entrenado se guarda en:
-
-```
-models/model_pipeline.joblib
-```
+- Prediction drift
+- Retraining triggers
+- Alertas automáticas
+- Champion vs Challenger monitoring
+- Explainability drift
 
 ---
 
-## 🌐 Levantar API
+## Autora
 
-```bash
-uvicorn src.app:app --reload
-```
+**Florencia Sosa Comisso**  
+Data & Business Analyst | BI · SQL · Python · Power BI
 
-Disponible en:
-
-```
-http://localhost:8000
-```
-
----
-
-## 🔍 Ejemplo de uso
-
-```bash
-curl -X POST http://localhost:8000/predict \
--H "Content-Type: application/json" \
--d '{"feature1": value1, "feature2": value2}'
-```
-
----
-
-## 🐳 Docker
-
-Construir imagen:
-
-```bash
-docker build -t churn-api .
-```
-
-Correr contenedor:
-
-```bash
-docker run -p 8000:8000 churn-api
-```
-
----
-
-## ☁️ Deploy
-
-El proyecto está preparado para deploy en cloud (Render, AWS, GCP, Azure).
-
-👉 Próximo paso:
-
-* deploy en producción
-* automatización (CI/CD)
-
----
-
-## 📊 Métricas evaluadas
-
-* Accuracy
-* Precision
-* Recall
-* ROC-AUC
-
----
-
-## 🚀 Roadmap
-
-* [ ] Deploy en la nube
-* [ ] Pipeline automático
-* [ ] Monitoreo en producción
-* [ ] Versionado de modelos
-
----
-
-## 👩‍💻 Autor
-
-Florencia Sosa Comisso
-🔗 http://linkedin.com/in/florencia-sosa-comisso
+LinkedIn:  
+http://linkedin.com/in/florencia-sosa-comisso

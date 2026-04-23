@@ -1,18 +1,20 @@
-# src/model_monitoring.py
 from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent))
 
 import os
 from datetime import datetime
-from typing import List
 
 import numpy as np
 import pandas as pd
-
-from scipy.stats import ks_2samp, chisquare
 from scipy.spatial.distance import jensenshannon
+from scipy.stats import chisquare, ks_2samp
 
-from src.ft_engineering import load_dataset
-from model_deploy import fe_from_raw  # Reutilizamos el mismo FE del deploy
+from ft_engineering import load_dataset
+from model_deploy import fe_from_raw
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(APP_DIR, ".."))
@@ -43,7 +45,6 @@ def _status(metric: str, value: float) -> str:
             return "WARNING"
         return "DRIFT"
     else:
-        # p-values
         if value > t["ok"]:
             return "OK"
         if value > t["warn"]:
@@ -58,6 +59,7 @@ def _safe_num(s: pd.Series) -> pd.Series:
 def psi(ref: pd.Series, cur: pd.Series, bins: int = 10) -> float:
     ref = _safe_num(ref)
     cur = _safe_num(cur)
+
     if len(ref) < 50 or len(cur) < 50:
         return np.nan
 
@@ -81,6 +83,7 @@ def psi(ref: pd.Series, cur: pd.Series, bins: int = 10) -> float:
 def js_div(ref: pd.Series, cur: pd.Series, bins: int = 20) -> float:
     ref = _safe_num(ref)
     cur = _safe_num(cur)
+
     if len(ref) < 50 or len(cur) < 50:
         return np.nan
 
@@ -105,8 +108,10 @@ def js_div(ref: pd.Series, cur: pd.Series, bins: int = 20) -> float:
 def ks_pvalue(ref: pd.Series, cur: pd.Series) -> float:
     ref = _safe_num(ref)
     cur = _safe_num(cur)
+
     if len(ref) < 50 or len(cur) < 50:
         return np.nan
+
     return float(ks_2samp(ref, cur).pvalue)
 
 
@@ -141,15 +146,14 @@ def build_or_load_baseline(df_raw: pd.DataFrame, n: int = 5000, seed: int = 42) 
         return pd.read_csv(BASELINE_PATH)
 
     base_raw = df_raw.sample(n=min(n, len(df_raw)), random_state=seed)
-    base = fe_from_raw(base_raw)  # FE consistente con deploy
+    base = fe_from_raw(base_raw)
     base.to_csv(BASELINE_PATH, index=False)
     return base
 
 
 def current_batch(df_raw: pd.DataFrame, n: int = 2000, seed: int = 7) -> pd.DataFrame:
     cur_raw = df_raw.sample(n=min(n, len(df_raw)), random_state=seed)
-    cur = fe_from_raw(cur_raw)
-    return cur
+    return fe_from_raw(cur_raw)
 
 
 def detect_drift(baseline: pd.DataFrame, current: pd.DataFrame) -> pd.DataFrame:
@@ -170,21 +174,30 @@ def detect_drift(baseline: pd.DataFrame, current: pd.DataFrame) -> pd.DataFrame:
         rows.append({
             "variable": col,
             "type": "numeric",
-            "psi": v_psi, "psi_status": _status("psi", v_psi),
-            "js": v_js, "js_status": _status("js", v_js),
-            "ks_pvalue": v_ks, "ks_status": _status("ks_p", v_ks),
-            "chi_pvalue": np.nan, "chi_status": "NA",
+            "psi": v_psi,
+            "psi_status": _status("psi", v_psi),
+            "js": v_js,
+            "js_status": _status("js", v_js),
+            "ks_pvalue": v_ks,
+            "ks_status": _status("ks_p", v_ks),
+            "chi_pvalue": np.nan,
+            "chi_status": "NA",
         })
 
     for col in cat_cols:
         v_chi = chi_pvalue(baseline[col], current[col])
+
         rows.append({
             "variable": col,
             "type": "categorical",
-            "psi": np.nan, "psi_status": "NA",
-            "js": np.nan, "js_status": "NA",
-            "ks_pvalue": np.nan, "ks_status": "NA",
-            "chi_pvalue": v_chi, "chi_status": _status("chi_p", v_chi),
+            "psi": np.nan,
+            "psi_status": "NA",
+            "js": np.nan,
+            "js_status": "NA",
+            "ks_pvalue": np.nan,
+            "ks_status": "NA",
+            "chi_pvalue": v_chi,
+            "chi_status": _status("chi_p", v_chi),
         })
 
     report = pd.DataFrame(rows)
@@ -200,7 +213,23 @@ def detect_drift(baseline: pd.DataFrame, current: pd.DataFrame) -> pd.DataFrame:
         return "NA"
 
     report["overall_status"] = report.apply(overall, axis=1)
-    return report.sort_values(by=["overall_status", "variable"], ascending=[False, True])
+
+    report["risk_score"] = report[["psi", "js"]].fillna(0).sum(axis=1)
+
+    severity_map = {
+        "DRIFT": 3,
+        "WARNING": 2,
+        "OK": 1,
+        "NA": 0
+    }
+
+    report["severity_rank"] = report["overall_status"].map(severity_map).fillna(0)
+    report["priority_score"] = report["severity_rank"] + report["risk_score"]
+
+    return report.sort_values(
+        by=["severity_rank", "priority_score", "variable"],
+        ascending=[False, False, True]
+    )
 
 
 def append_history(report: pd.DataFrame) -> None:
@@ -216,6 +245,7 @@ def append_history(report: pd.DataFrame) -> None:
     }
 
     hist = pd.DataFrame([row])
+
     if os.path.exists(DRIFT_HISTORY_PATH):
         prev = pd.read_csv(DRIFT_HISTORY_PATH)
         hist = pd.concat([prev, hist], ignore_index=True)
@@ -224,8 +254,7 @@ def append_history(report: pd.DataFrame) -> None:
 
 
 def main():
-    df = load_dataset()  # trae también el target
-    df_raw = df.drop(columns=[TARGET], errors="ignore")  # para drift usamos features
+    df_raw = load_dataset()
 
     baseline = build_or_load_baseline(df_raw, n=5000)
     current = current_batch(df_raw, n=2000)
