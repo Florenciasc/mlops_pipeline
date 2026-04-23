@@ -93,9 +93,12 @@ def fe_from_raw(df_raw: pd.DataFrame) -> pd.DataFrame:
         if col in df.columns:
             df[col] = df[col].astype(str)
 
+            
+    # En este modelo deployado, puntaje es requerido por el pipeline entrenado.
+    # No eliminarlo porque el modelo espera esta columna.
     # Evitar leakage
-    if "puntaje" in df.columns:
-        df.drop(columns=["puntaje"], inplace=True)
+    #if "puntaje" in df.columns:
+        #df.drop(columns=["puntaje"], inplace=True)
 
     # Por si el usuario envía el target
     if TARGET in df.columns:
